@@ -1,0 +1,1 @@
+Use UploadFile.name or UploadFile.path instead of UploadFile.filename (which raises an error)
