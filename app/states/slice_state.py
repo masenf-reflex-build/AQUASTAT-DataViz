@@ -131,6 +131,7 @@ class SliceState(rx.State):
         self.is_renaming_slice = False
         self.current_slice_name = ""
 
+    @rx.event
     def set_show_export_modal(self, open: bool):
         self.show_export_modal = open
         if open:
@@ -138,6 +139,7 @@ class SliceState(rx.State):
         else:
             self.slices_to_export = []
 
+    @rx.event
     def set_show_import_modal(self, open: bool):
         self.show_import_modal = open
         if not open:

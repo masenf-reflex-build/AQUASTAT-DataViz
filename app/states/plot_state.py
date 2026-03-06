@@ -2,9 +2,8 @@ import reflex as rx
 import pandas as pd
 import logging
 import uuid
-from typing import Literal
 import json
-from app.states.data_state import DataState
+from typing import Literal
 from app.states.slice_state import SliceState, PlotConfig
 
 
@@ -17,6 +16,8 @@ class PlotState(rx.State):
     new_plot_subgroup: str = "All"
     new_plot_variable: str = "All"
     new_plot_series_values: list[str] = []
+    available_subgroups: list[str] = ["All"]
+    available_variables: list[str] = ["All"]
     series_top_n: str = ""
     series_filter_text: str = ""
     editing_plot_id: str = ""
@@ -29,7 +30,35 @@ class PlotState(rx.State):
             return "Year"
         return ""
 
+    async def _update_dropdown_options(self):
+        """Helper method to compute available subgroups and variables based on current selections."""
+        from app.states.data_state import DataState
+
+        data_state = await self.get_state(DataState)
+        if data_state.data.empty:
+            self.available_subgroups = ["All"]
+            self.available_variables = ["All"]
+            return
+        df = data_state.data.copy()
+        sub_df = df.copy()
+        if self.new_plot_variable_group != "All":
+            sub_df = sub_df[sub_df["VariableGroup"] == self.new_plot_variable_group]
+        new_subgroups = ["All"] + sorted(sub_df["Subgroup"].unique().tolist())
+        self.available_subgroups = [str(s) for s in new_subgroups]
+        var_df = sub_df.copy()
+        if self.new_plot_subgroup != "All":
+            var_df = var_df[var_df["Subgroup"] == self.new_plot_subgroup]
+        new_variables = ["All"] + sorted(var_df["Variable"].unique().tolist())
+        self.available_variables = [str(v) for v in new_variables]
+
+    @rx.event
+    async def init_modal_options(self):
+        """Initializes options when the modal is opened."""
+        await self._update_dropdown_options()
+
     async def _get_filtered_data_for_controls(self) -> pd.DataFrame:
+        from app.states.data_state import DataState
+
         data_state = await self.get_state(DataState)
         if data_state.data.empty:
             return pd.DataFrame()
@@ -58,15 +87,13 @@ class PlotState(rx.State):
             try:
                 sorted_numeric = sorted(unique_values, key=float, reverse=True)
                 return [str(v) for v in sorted_numeric]
-            except (ValueError, TypeError) as e:
-                logging.exception(f"Error sorting series options: {e}")
+            except (ValueError, TypeError):
                 sorted_alpha = sorted(unique_values)
                 return [str(v) for v in sorted_alpha]
         return [str(opt) for opt in sorted_options]
 
     @rx.var
     async def filtered_series_options(self) -> list[str]:
-        """Filters series options based on filter text."""
         options = await self.series_options
         if self.series_filter_text.strip() == "":
             return options
@@ -77,15 +104,17 @@ class PlotState(rx.State):
         ]
 
     @rx.event
-    def set_new_plot_variable_group(self, value: str):
+    async def set_new_plot_variable_group(self, value: str):
         self.new_plot_variable_group = value
         self.new_plot_subgroup = "All"
         self.new_plot_variable = "All"
+        await self._update_dropdown_options()
 
     @rx.event
-    def set_new_plot_subgroup(self, value: str):
+    async def set_new_plot_subgroup(self, value: str):
         self.new_plot_subgroup = value
         self.new_plot_variable = "All"
+        await self._update_dropdown_options()
 
     @rx.event
     async def set_new_plot_variable(self, value: str):
@@ -135,6 +164,7 @@ class PlotState(rx.State):
         self.new_plot_series_values = []
         self.series_top_n = ""
         self.series_filter_text = ""
+        await self._update_dropdown_options()
 
     @rx.event
     async def set_series_top_n(self, value: str):
@@ -156,8 +186,7 @@ class PlotState(rx.State):
                 sorted_options = [
                     str(v) for v in sorted(unique_values, key=float, reverse=True)
                 ]
-            except (ValueError, TypeError) as e:
-                logging.exception(f"Error sorting series options: {e}")
+            except (ValueError, TypeError):
                 sorted_options = [str(v) for v in sorted(unique_values)]
         if value == "None" or value == "":
             self.new_plot_series_values = []
@@ -167,8 +196,7 @@ class PlotState(rx.State):
             try:
                 n = int(value)
                 self.new_plot_series_values = sorted_options[:n]
-            except (ValueError, TypeError) as e:
-                logging.exception(f"Error converting top_n to int: {e}")
+            except (ValueError, TypeError):
                 self.new_plot_series_values = []
 
     @rx.event
@@ -192,6 +220,7 @@ class PlotState(rx.State):
             self.new_plot_series_values = plot_to_edit.series_values
             self.series_top_n = ""
             self.series_filter_text = ""
+            await self._update_dropdown_options()
             data_state.show_add_chart_modal = True
 
     @rx.event

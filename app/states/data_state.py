@@ -82,7 +82,9 @@ class DataState(rx.State):
             slice_state = await self.get_state(SliceState)
             slice_state.slices_json = "[]"
             slice_state.create_new_slice()
-            self.variable_groups = ["All"] + df["VariableGroup"].unique().tolist()
+            self.variable_groups = ["All"] + sorted(
+                df["VariableGroup"].unique().tolist()
+            )
             self.upload_message = f"Successfully uploaded {file.name}."
             self.uploaded_filename = new_filename
             self.show_upload_page = False
@@ -110,7 +112,9 @@ class DataState(rx.State):
             df.columns = [col.strip() for col in df.columns]
             self.data = df
             self.data_columns = df.columns.tolist()
-            self.variable_groups = ["All"] + df["VariableGroup"].unique().tolist()
+            self.variable_groups = ["All"] + sorted(
+                df["VariableGroup"].unique().tolist()
+            )
             self.upload_message = f"Successfully loaded {self.uploaded_filename}."
             slice_state = await self.get_state(SliceState)
             slices = slice_state.slices
@@ -126,67 +130,6 @@ class DataState(rx.State):
             self.uploaded_filename = ""
         finally:
             self.is_loading = False
-
-    @rx.var
-    def subgroups(self) -> list[str]:
-        from app.states.plot_state import PlotState
-
-        "Get unique subgroups based on selected variable group."
-        if self.data.empty:
-            return ["All"]
-        df = self.data.copy()
-        if (
-            self.router.page.params.get(
-                f"{PlotState.get_name()}.new_plot_variable_group"
-            )
-            and self.router.page.params.get(
-                f"{PlotState.get_name()}.new_plot_variable_group"
-            )
-            != "All"
-        ):
-            df = df[
-                df["VariableGroup"]
-                == self.router.page.params.get(
-                    f"{PlotState.get_name()}.new_plot_variable_group"
-                )
-            ]
-        return ["All"] + df["Subgroup"].unique().tolist()
-
-    @rx.var
-    def variables(self) -> list[str]:
-        from app.states.plot_state import PlotState
-
-        "Get unique variables based on selected group and subgroup."
-        if self.data.empty:
-            return ["All"]
-        df = self.data.copy()
-        if (
-            self.router.page.params.get(
-                f"{PlotState.get_name()}.new_plot_variable_group"
-            )
-            and self.router.page.params.get(
-                f"{PlotState.get_name()}.new_plot_variable_group"
-            )
-            != "All"
-        ):
-            df = df[
-                df["VariableGroup"]
-                == self.router.page.params.get(
-                    f"{PlotState.get_name()}.new_plot_variable_group"
-                )
-            ]
-        if (
-            self.router.page.params.get(f"{PlotState.get_name()}.new_plot_subgroup")
-            and self.router.page.params.get(f"{PlotState.get_name()}.new_plot_subgroup")
-            != "All"
-        ):
-            df = df[
-                df["Subgroup"]
-                == self.router.page.params.get(
-                    f"{PlotState.get_name()}.new_plot_subgroup"
-                )
-            ]
-        return ["All"] + df["Variable"].unique().tolist()
 
     @rx.event
     async def remove_plot(self, plot_id: str):
@@ -340,9 +283,12 @@ class DataState(rx.State):
         return plots_with_figs
 
     @rx.event
-    def set_show_add_chart_modal(self, open: bool):
+    async def set_show_add_chart_modal(self, open: bool):
         from app.states.plot_state import PlotState
 
+        plot_state = await self.get_state(PlotState)
         self.show_add_chart_modal = open
-        if not open:
-            return PlotState.cancel_editing
+        if open:
+            yield PlotState.init_modal_options
+        else:
+            yield PlotState.cancel_editing

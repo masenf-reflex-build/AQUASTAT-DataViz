@@ -85,7 +85,7 @@ def _select_control(
             rx.foreach(items, lambda item: rx.el.option(item, value=item)),
             on_change=on_change,
             value=value,
-            class_name="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500",
+            class_name="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 appearance-none",
         ),
         class_name="mb-4",
     )
@@ -113,7 +113,7 @@ def series_multiselect() -> rx.Component:
                 on_change=PlotState.set_series_top_n,
                 value=PlotState.series_top_n,
                 placeholder="Select",
-                class_name="p-1 text-xs border border-gray-300 rounded-md shadow-sm",
+                class_name="p-1 text-xs border border-gray-300 rounded-md shadow-sm appearance-none",
             ),
             class_name="flex justify-between items-center mb-2",
         ),
@@ -188,7 +188,7 @@ def axis_variable_controls() -> rx.Component:
                 ),
                 _select_control(
                     "Subgroup",
-                    DataState.subgroups,
+                    PlotState.available_subgroups,
                     PlotState.set_new_plot_subgroup,
                     PlotState.new_plot_subgroup,
                 ),
@@ -198,7 +198,7 @@ def axis_variable_controls() -> rx.Component:
         ),
         _select_control(
             "Y-Axis",
-            DataState.variables,
+            PlotState.available_variables,
             PlotState.set_new_plot_variable,
             PlotState.new_plot_variable,
         ),

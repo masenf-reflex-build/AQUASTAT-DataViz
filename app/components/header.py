@@ -46,7 +46,7 @@ def header() -> rx.Component:
                         rx.el.option("[New Slice]", value="new"),
                         value=SliceState.active_slice_id,
                         on_change=SliceState.set_active_slice_id,
-                        class_name="p-2 border rounded-md shadow-sm",
+                        class_name="p-2 border rounded-md shadow-sm appearance-none",
                     ),
                 ),
                 rx.el.button(
